@@ -1,0 +1,27 @@
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
+from database import session as sql
+from sqlalchemy.sql import text
+
+
+from register import register_router
+from login import login_router
+from auth import auth_router
+from auction_creation import auction_creator_router
+from home import home_router
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(register_router, prefix="/register", tags=["register"])
+app.include_router(login_router, prefix="/login", tags=["login"])
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(auction_creator_router, prefix="/auction", tags=["auction"])
+app.include_router(home_router, prefix="/home", tags=["home"])
