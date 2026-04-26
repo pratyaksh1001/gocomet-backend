@@ -10,7 +10,7 @@ auction_creator_router=APIRouter()
 @auction_creator_router.post("")
 async def auction_creator(request: Request):
     sql=SessionLocal()
-    present=datetime.datetime.now()
+    present=datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
     data=await request.json()
     print(data)
     forced_close_time=datetime.datetime.fromisoformat(data["forced_close_time"])

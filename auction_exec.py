@@ -17,7 +17,7 @@ current_end_time = {}
 
 def refresh_auction_status(auction):
     with SessionLocal() as sql:
-        now = datetime.now()
+        now = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
         bids = sql.query(Bids).filter(Bids.auction_id == auction.rfq_id).order_by(Bids.bid_time.asc()).all()
         
@@ -55,7 +55,7 @@ async def get_auction(auction_id: int):
         sql.commit()
 
         bids = sql.query(Bids).filter(Bids.auction_id == auction_id).all()
-        now = datetime.now()
+        now = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
         return {
             "success": True,
@@ -99,7 +99,7 @@ def should_extend(auction, new_bid, previous_best):
 
 
 async def broadcast_time_update(auction_id, auction):
-    now = datetime.now()
+    now = datetime.utcnow() + timedelta(hours=5, minutes=30)
     current_end = now + timedelta(seconds=time_remaining.get(auction_id, 0))
     current_end_time[auction_id] = current_end
     payload = {
@@ -121,7 +121,7 @@ async def timer_loop(auction_id: int):
             if not auction:
                 break
 
-            now = datetime.now()
+            now = datetime.utcnow() + timedelta(hours=5, minutes=30)
             max_allowed = int((auction.forced_close_time - now).total_seconds())
 
             if max_allowed <= 0:
@@ -171,7 +171,7 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
                 await websocket.close()
                 return
 
-            now = datetime.now()
+            now = datetime.utcnow() + timedelta(hours=5, minutes=30)
             status, remaining = refresh_auction_status(auction)
             sql.commit()
 
@@ -188,7 +188,7 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
             if res.get("type") != "BID" or role != "supplier":
                 continue
 
-            now = datetime.now()
+            now = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
             with SessionLocal() as sql:
                 auction = sql.query(Auction).filter(Auction.rfq_id == auction_id).first()

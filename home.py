@@ -22,7 +22,7 @@ async def home(request: Request):
         else:
             status = -1
         print(status)
-        present=datetime.datetime.now()
+        present=datetime.datetime.utcnow() + datetime.timedelta(hours=5, minutes=30)
         auctions = sql.execute(select(Auction)).scalars().all()
         updated = False
         for a in auctions:
