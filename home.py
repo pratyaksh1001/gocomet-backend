@@ -4,7 +4,7 @@ from sqlalchemy import select
 from fastapi import APIRouter,Request
 from database import session as sql
 from cache import cache
-from models import Auction
+from models import Auction, Bids
 home_router=APIRouter()
 
 
@@ -16,10 +16,33 @@ async def home(request: Request):
             status =1
         elif status == "closed":
             status = 0
+        elif status == "forced":
+            status = 2
         else:
             status = -1
         print(status)
         present=datetime.datetime.now()
+        auctions = sql.execute(select(Auction)).scalars().all()
+        updated = False
+        for a in auctions:
+            if a.forced_close_time <= present:
+                next_status = 2
+            else:
+                latest_bid = (
+                    sql.query(Bids)
+                    .filter(Bids.auction_id == a.rfq_id)
+                    .order_by(Bids.bid_time.desc())
+                    .first()
+                )
+                base_time = latest_bid.bid_time if latest_bid else a.start_time
+                dynamic_close = base_time + datetime.timedelta(minutes=a.extension_duration)
+                effective_close = min(dynamic_close, a.forced_close_time)
+                next_status = 0 if present >= effective_close else 1
+            if a.status != next_status:
+                a.status = next_status
+                updated = True
+        if updated:
+            sql.commit()
         q=select(Auction).where(Auction.status==status)
         res = sql.execute(q).scalars().all()
         result = [

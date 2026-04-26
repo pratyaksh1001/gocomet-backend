@@ -18,6 +18,7 @@ async def auction_creator(request: Request):
     rfq_name=(data["rfq_name"])
     extension_duration=int(data["extension_duration"])
     pickup_date=datetime.datetime.fromisoformat(data["pickup_date"])
+    trigger=int(data["trigger"])
     user=cache.hgetall(token)
     if user is None:
         return {"success": False}
@@ -30,6 +31,7 @@ async def auction_creator(request: Request):
         pickup_date=pickup_date,
         extension_duration=extension_duration,
         owner=user_from_db,
+        trigger=trigger,
         status=0 if present<start_time else 1
     )
     print(auction)

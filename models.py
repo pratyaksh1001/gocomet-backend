@@ -9,7 +9,6 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "user"
-
     email = mapped_column(String, primary_key=True, index=True)
     username = mapped_column(String, nullable=False)
     password = mapped_column(String, nullable=False)
@@ -43,6 +42,7 @@ class Auction(Base):
     pickup_date = mapped_column(DateTime, nullable=False)
     extension_duration = mapped_column(Integer, nullable=False)
     status = mapped_column(Integer, nullable=False)
+    trigger=mapped_column(Integer, nullable=False)
     owner = relationship("User", back_populates="auctions", lazy="joined")
 
     bids = relationship(
