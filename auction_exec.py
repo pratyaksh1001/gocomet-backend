@@ -215,10 +215,20 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
                     "auction_id": auction_id,
                     "owner_email": user_email,
                     "bid_amount": bid.bid_amount,
-                    "bid_time": now,
+                    "bid_time": now.isoformat(),
                 }
 
                 previous_best = highest.get(auction_id)
+                if not previous_best:
+                    best_bid_db = sql.query(Bids).filter(Bids.auction_id == auction_id).order_by(Bids.bid_amount.asc()).first()
+                    if best_bid_db:
+                        previous_best = {
+                            "auction_id": auction_id,
+                            "owner_email": best_bid_db.owner_email,
+                            "bid_amount": best_bid_db.bid_amount,
+                            "bid_time": best_bid_db.bid_time.isoformat()
+                        }
+                        highest[auction_id] = previous_best
 
                 if auction_id not in highest or bid.bid_amount < highest[auction_id]["bid_amount"]:
                     highest[auction_id] = bid_data
