@@ -268,7 +268,7 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
                     (auction.forced_close_time - now).total_seconds()
                 )
                 time_remaining[auction_id] = min(
-                    time_remaining.get(auction_id, 0) + (auction.extension_duration * 60),
+                    auction.extension_duration * 60,
                     max_allowed
                 )
                 current_end_time[auction_id] = now + timedelta(seconds=time_remaining[auction_id])
