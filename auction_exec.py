@@ -158,8 +158,14 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
             return
 
         token = auth.get("token")
-        user_email = cache.hget(token, "email")
-        role = cache.hget(token, "role")
+        user_data = cache.hgetall(token) if token else None
+
+        if not user_data:
+            await websocket.close()
+            return
+
+        user_email = user_data.get("email")
+        role = user_data.get("role")
 
         if not user_email or role not in ("supplier", "buyer"):
             await websocket.close()
