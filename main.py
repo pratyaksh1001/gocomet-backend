@@ -10,9 +10,7 @@ from home import home_router
 from auction_exec import auction_exec_router
 
 app = FastAPI()
-frontend_urls = os.getenv("frontendurl", "")
-env_origins = [u.strip() for u in frontend_urls.split(",") if u.strip()]
-allow_origins = ["https://gocomet-frontend.vercel.app/","*"]
+allow_origins = ["https://gocomet-frontend.vercel.app", "http://localhost:3000", "*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
