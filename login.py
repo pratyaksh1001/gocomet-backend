@@ -16,7 +16,7 @@ async def login(request: Request):
     user = sql.query(User).filter(User.email == email).first()
     if user and bcrypt.checkpw(password.encode("utf-8"), user.password.encode("utf-8")):
         token = jwt.encode({"email": email, "password": password}, "pratyaksh")
-        cache.hset(token, mapping={"email": email, "username": user.username,"role":user.role})
+        cache.hset(token, values={"email": email, "username": user.username,"role":user.role})
         cache.expire(token, 3600)
         return {"token": token, "email": email, "username": user.username, "success": True,"role":user.role}
     else:

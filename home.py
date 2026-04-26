@@ -25,19 +25,19 @@ async def home(request: Request):
         auctions = sql.execute(select(Auction)).scalars().all()
         updated = False
         for a in auctions:
-            if a.forced_close_time <= present:
-                next_status = 2
+            latest_bid = (
+                sql.query(Bids)
+                .filter(Bids.auction_id == a.rfq_id)
+                .order_by(Bids.bid_time.desc())
+                .first()
+            )
+            base_time = latest_bid.bid_time if latest_bid else a.start_time
+            dynamic_close = base_time + datetime.timedelta(minutes=a.extension_duration)
+            effective_close = min(dynamic_close, a.forced_close_time)
+            if present >= effective_close:
+                next_status = 2 if effective_close == a.forced_close_time else 0
             else:
-                latest_bid = (
-                    sql.query(Bids)
-                    .filter(Bids.auction_id == a.rfq_id)
-                    .order_by(Bids.bid_time.desc())
-                    .first()
-                )
-                base_time = latest_bid.bid_time if latest_bid else a.start_time
-                dynamic_close = base_time + datetime.timedelta(minutes=a.extension_duration)
-                effective_close = min(dynamic_close, a.forced_close_time)
-                next_status = 0 if present >= effective_close else 1
+                next_status = 1
             if a.status != next_status:
                 a.status = next_status
                 updated = True

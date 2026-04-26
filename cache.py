@@ -1,12 +1,9 @@
 import os
-import redis
+from upstash_redis import Redis
 import dotenv
 dotenv.load_dotenv()
 
-cache = redis.Redis(
-    host='redis-12395.crce276.ap-south-1-3.ec2.cloud.redislabs.com',
-    port=12395,
-    decode_responses=True,
-    username="default",
-    password=os.getenv("REDIS_PASSWORD"),
+cache = Redis(
+    url="https://charmed-flounder-97065.upstash.io",
+    token=os.getenv("upstash")
 )

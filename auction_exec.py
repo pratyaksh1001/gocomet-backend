@@ -19,9 +19,6 @@ current_end_time = {}
 
 def refresh_auction_status(auction):
     now = datetime.now()
-    if auction.forced_close_time <= now:
-        auction.status = 2
-        return auction.status, 0
     latest_bid = (
         sql.query(Bids)
         .filter(Bids.auction_id == auction.rfq_id)
@@ -33,7 +30,7 @@ def refresh_auction_status(auction):
     effective_close = min(dynamic_close, auction.forced_close_time)
     remaining = int((effective_close - now).total_seconds())
     if remaining <= 0:
-        auction.status = 0
+        auction.status = 2 if effective_close == auction.forced_close_time else 0
         return auction.status, 0
     auction.status = 1
     return auction.status, remaining
