@@ -181,6 +181,35 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
             status, remaining = refresh_auction_status(auction)
             sql.commit()
 
+            # Fetch all current bids and send SYNC to this client
+            all_bids = sql.query(Bids).filter(Bids.auction_id == auction_id).order_by(Bids.bid_time.desc()).all()
+            bids_payload = [
+                {
+                    "bid_id": b.bid_id,
+                    "auction_id": b.auction_id,
+                    "owner_email": b.owner_email,
+                    "bid_amount": b.bid_amount,
+                    "bid_time": b.bid_time.isoformat(),
+                    "transit_time": b.transit_time,
+                    "freight_charges": b.freight_charges,
+                    "origin_charges": b.origin_charges,
+                    "destination_charges": b.destination_charges,
+                    "validity_period": b.validity_period.isoformat() if b.validity_period else None
+                }
+                for b in all_bids
+            ]
+            best = min(all_bids, key=lambda b: b.bid_amount, default=None)
+            best_payload = {
+                "owner_email": best.owner_email,
+                "bid_amount": best.bid_amount
+            } if best else None
+
+        await websocket.send_json({
+            "type": "SYNC",
+            "bids": bids_payload,
+            "highest": best_payload
+        })
+
         if auction_id not in time_remaining:
             time_remaining[auction_id] = remaining
             current_end_time[auction_id] = now + timedelta(seconds=remaining)
