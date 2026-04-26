@@ -15,24 +15,3 @@ SessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False
 )
-
-_real_session = scoped_session(SessionLocal)
-
-
-class SafeSession:
-    def __getattr__(self, name):
-        attr = getattr(_real_session, name)
-
-        if callable(attr):
-            def wrapper(*args, **kwargs):
-                try:
-                    return attr(*args, **kwargs)
-                except SQLAlchemyError:
-                    _real_session.rollback()
-                    raise
-            return wrapper
-
-        return attr
-
-
-session = SafeSession()

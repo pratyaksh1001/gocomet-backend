@@ -1,5 +1,5 @@
 from fastapi import APIRouter,Request
-from database import session as sql
+from database import engine,SessionLocal
 from sqlalchemy.sql import text
 from models import Auction, User
 from cache import cache
@@ -9,6 +9,7 @@ auction_creator_router=APIRouter()
 
 @auction_creator_router.post("")
 async def auction_creator(request: Request):
+    sql=SessionLocal()
     present=datetime.datetime.now()
     data=await request.json()
     print(data)
@@ -37,4 +38,5 @@ async def auction_creator(request: Request):
     print(auction)
     sql.add(auction)
     sql.commit()
+    sql.close()
     return {"success": True}

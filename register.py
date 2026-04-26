@@ -8,13 +8,14 @@ import re
 from models import User
 from cache import cache
 import bcrypt
-from database import session as sql
+from database import engine,SessionLocal
 
 register_router = APIRouter()
 salt = bcrypt.gensalt(11)
 
 @register_router.post("")
 async def register_user(req: Request):
+    sql=SessionLocal()
     data = await req.json()
     print(data)
     password = data['password']
@@ -26,5 +27,6 @@ async def register_user(req: Request):
             return {"message": "Email already exists", "success": False}
         sql.add(user)
         sql.commit()
+        sql.close()
         return {"message": "User created successfully", "success": True}
     return {"message": "Password is weak", "success": False}

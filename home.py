@@ -2,7 +2,7 @@ import datetime
 
 from sqlalchemy import select
 from fastapi import APIRouter,Request
-from database import session as sql
+from database import SessionLocal
 from cache import cache
 from models import Auction, Bids
 home_router=APIRouter()
@@ -10,6 +10,7 @@ home_router=APIRouter()
 
 @home_router.get("")
 async def home(request: Request):
+    sql=SessionLocal()
     try:
         status = request.query_params["status"]
         if status == "active":
@@ -59,9 +60,12 @@ async def home(request: Request):
             for i in res
         ]
         print(result)
-
+        sql.close()
         return {"result": result,"success": True}
 
     except Exception as e:
         print(e)
+        sql.close()
         return {"result": [], "success": False}
+    finally:
+        sql.close()

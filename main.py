@@ -2,10 +2,6 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 import os
 
-from database import session as sql
-from sqlalchemy.sql import text
-
-
 from register import register_router
 from login import login_router
 from auth import auth_router
