@@ -188,80 +188,93 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
             if res.get("type") != "BID" or role != "supplier":
                 continue
 
-            now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+            try:
+                now = datetime.utcnow() + timedelta(hours=5, minutes=30)
 
-            with SessionLocal() as sql:
-                auction = sql.query(Auction).filter(Auction.rfq_id == auction_id).first()
+                # Parse validity_period safely
+                vp_raw = res.get("validity_period", "")
+                if vp_raw and isinstance(vp_raw, str) and vp_raw.strip():
+                    validity_period = datetime.fromisoformat(vp_raw.strip())
+                else:
+                    validity_period = now
 
-                if not auction or auction.status in (0, 2):
-                    continue
+                with SessionLocal() as sql:
+                    auction = sql.query(Auction).filter(Auction.rfq_id == auction_id).first()
 
-                bid = Bids(
-                    auction_id=auction_id,
-                    owner_email=user_email,
-                    bid_amount=int(res["bid_amount"]),
-                    freight_charges=int(res.get("freight_charges", 0)),
-                    origin_charges=int(res.get("origin_charges", 0)),
-                    destination_charges=int(res.get("destination_charges", 0)),
-                    transit_time=int(res.get("transit_time", 0)),
-                    bid_time=now,
-                    validity_period=datetime.fromisoformat(res["validity_period"]) if res.get("validity_period") else now
-                )
+                    if not auction or auction.status in (0, 2):
+                        continue
 
-                sql.add(bid)
-                sql.commit()
-
-                bid_data = {
-                    "auction_id": auction_id,
-                    "owner_email": user_email,
-                    "bid_amount": bid.bid_amount,
-                    "bid_time": now.isoformat(),
-                }
-
-                previous_best = highest.get(auction_id)
-                if not previous_best:
-                    best_bid_db = sql.query(Bids).filter(Bids.auction_id == auction_id).order_by(Bids.bid_amount.asc()).first()
-                    if best_bid_db:
-                        previous_best = {
-                            "auction_id": auction_id,
-                            "owner_email": best_bid_db.owner_email,
-                            "bid_amount": best_bid_db.bid_amount,
-                            "bid_time": best_bid_db.bid_time.isoformat()
-                        }
-                        highest[auction_id] = previous_best
-
-                if auction_id not in highest or bid.bid_amount < highest[auction_id]["bid_amount"]:
-                    highest[auction_id] = bid_data
-
-                if should_extend(auction, bid_data, previous_best):
-                    max_allowed = int((auction.forced_close_time - now).total_seconds())
-                    time_remaining[auction_id] = min(
-                        auction.extension_duration * 60,
-                        max_allowed
+                    bid = Bids(
+                        auction_id=auction_id,
+                        owner_email=user_email,
+                        bid_amount=int(res["bid_amount"]),
+                        freight_charges=int(res.get("freight_charges", 0)),
+                        origin_charges=int(res.get("origin_charges", 0)),
+                        destination_charges=int(res.get("destination_charges", 0)),
+                        transit_time=int(res.get("transit_time", 0)),
+                        bid_time=now,
+                        validity_period=validity_period
                     )
-                    await broadcast_time_update(auction_id, auction)
 
-                update_payload = {
-                    "type": "UPDATE",
-                    "highest": highest[auction_id],
-                    "new_bid": {
-                        "bid_id": bid.bid_id,
-                        "auction_id": bid.auction_id,
-                        "owner_email": bid.owner_email,
+                    sql.add(bid)
+                    sql.commit()
+                    sql.refresh(bid)
+
+                    bid_data = {
+                        "auction_id": auction_id,
+                        "owner_email": user_email,
                         "bid_amount": bid.bid_amount,
-                        "bid_time": bid.bid_time.isoformat(),
-                        "transit_time": bid.transit_time,
-                        "freight_charges": bid.freight_charges,
-                        "origin_charges": bid.origin_charges,
-                        "destination_charges": bid.destination_charges,
-                        "validity_period": bid.validity_period.isoformat() if bid.validity_period else None
+                        "bid_time": now.isoformat(),
                     }
-                }
-                for conn in connections.get(auction_id, []):
-                    try:
-                        await conn.send_json(update_payload)
-                    except Exception:
-                        pass
+
+                    previous_best = highest.get(auction_id)
+                    if not previous_best:
+                        best_bid_db = sql.query(Bids).filter(Bids.auction_id == auction_id).order_by(Bids.bid_amount.asc()).first()
+                        if best_bid_db:
+                            previous_best = {
+                                "auction_id": auction_id,
+                                "owner_email": best_bid_db.owner_email,
+                                "bid_amount": best_bid_db.bid_amount,
+                                "bid_time": best_bid_db.bid_time.isoformat()
+                            }
+                            highest[auction_id] = previous_best
+
+                    if auction_id not in highest or bid.bid_amount < highest[auction_id]["bid_amount"]:
+                        highest[auction_id] = bid_data
+
+                    if should_extend(auction, bid_data, previous_best):
+                        max_allowed = int((auction.forced_close_time - now).total_seconds())
+                        time_remaining[auction_id] = min(
+                            auction.extension_duration * 60,
+                            max_allowed
+                        )
+                        await broadcast_time_update(auction_id, auction)
+
+                    update_payload = {
+                        "type": "UPDATE",
+                        "highest": highest[auction_id],
+                        "new_bid": {
+                            "bid_id": bid.bid_id,
+                            "auction_id": bid.auction_id,
+                            "owner_email": bid.owner_email,
+                            "bid_amount": bid.bid_amount,
+                            "bid_time": bid.bid_time.isoformat(),
+                            "transit_time": bid.transit_time,
+                            "freight_charges": bid.freight_charges,
+                            "origin_charges": bid.origin_charges,
+                            "destination_charges": bid.destination_charges,
+                            "validity_period": bid.validity_period.isoformat() if bid.validity_period else None
+                        }
+                    }
+                    for conn in connections.get(auction_id, []):
+                        try:
+                            await conn.send_json(update_payload)
+                        except Exception:
+                            pass
+
+            except Exception as e:
+                print(f"Error processing bid: {e}")
+                continue
 
     except WebSocketDisconnect:
         pass
