@@ -94,6 +94,22 @@ def should_extend(auction, new_bid, previous_best):
     return False
 
 
+async def broadcast_time_update(auction_id, auction):
+    now = datetime.now()
+    current_end = now + timedelta(seconds=time_remaining.get(auction_id, 0))
+    current_end_time[auction_id] = current_end
+    payload = {
+        "type": "TIME_UPDATE",
+        "current_end_time": current_end.isoformat(),
+        "time_remaining": time_remaining.get(auction_id, 0),
+        "status": auction.status
+    }
+    for conn in connections.get(auction_id, []):
+        try:
+            await conn.send_json(payload)
+        except Exception:
+            pass
+
 async def timer_loop(auction_id: int):
     while auction_id in time_remaining:
         with SessionLocal() as sql:
@@ -109,6 +125,7 @@ async def timer_loop(auction_id: int):
                 sql.commit()
                 time_remaining[auction_id] = 0
                 current_end_time[auction_id] = now
+                await broadcast_time_update(auction_id, auction)
                 break
 
             if time_remaining[auction_id] > max_allowed:
@@ -117,6 +134,7 @@ async def timer_loop(auction_id: int):
             if time_remaining[auction_id] <= 0:
                 auction.status = 0
                 sql.commit()
+                await broadcast_time_update(auction_id, auction)
                 break
 
         time_remaining[auction_id] -= 1
@@ -182,7 +200,8 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
                     origin_charges=int(res.get("origin_charges", 0)),
                     destination_charges=int(res.get("destination_charges", 0)),
                     transit_time=int(res.get("transit_time", 0)),
-                    bid_time=now
+                    bid_time=now,
+                    validity_period=datetime.fromisoformat(res["validity_period"]) if res.get("validity_period") else now
                 )
 
                 sql.add(bid)
@@ -206,6 +225,29 @@ async def ws_auction(auction_id: int, websocket: WebSocket):
                         auction.extension_duration * 60,
                         max_allowed
                     )
+                    await broadcast_time_update(auction_id, auction)
+
+                update_payload = {
+                    "type": "UPDATE",
+                    "highest": highest[auction_id],
+                    "new_bid": {
+                        "bid_id": bid.bid_id,
+                        "auction_id": bid.auction_id,
+                        "owner_email": bid.owner_email,
+                        "bid_amount": bid.bid_amount,
+                        "bid_time": bid.bid_time.isoformat(),
+                        "transit_time": bid.transit_time,
+                        "freight_charges": bid.freight_charges,
+                        "origin_charges": bid.origin_charges,
+                        "destination_charges": bid.destination_charges,
+                        "validity_period": bid.validity_period.isoformat() if bid.validity_period else None
+                    }
+                }
+                for conn in connections.get(auction_id, []):
+                    try:
+                        await conn.send_json(update_payload)
+                    except Exception:
+                        pass
 
     except WebSocketDisconnect:
         pass
