@@ -1,4 +1,4 @@
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -16,18 +16,19 @@ SessionLocal = sessionmaker(
     autocommit=False
 )
 
-session = scoped_session(SessionLocal)
+_real_session = scoped_session(SessionLocal)
+
 
 class SafeSession:
     def __getattr__(self, name):
-        attr = getattr(session, name)
+        attr = getattr(_real_session, name)
 
         if callable(attr):
             def wrapper(*args, **kwargs):
                 try:
                     return attr(*args, **kwargs)
                 except SQLAlchemyError:
-                    session.rollback()
+                    _real_session.rollback()
                     raise
             return wrapper
 
