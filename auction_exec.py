@@ -19,16 +19,20 @@ def refresh_auction_status(auction):
     with SessionLocal() as sql:
         now = datetime.now()
 
-        latest_bid = (
-            sql.query(Bids)
-            .filter(Bids.auction_id == auction.rfq_id)
-            .order_by(Bids.bid_time.desc())
-            .first()
-        )
+        bids = sql.query(Bids).filter(Bids.auction_id == auction.rfq_id).order_by(Bids.bid_time.asc()).all()
+        
+        current_close = auction.start_time + timedelta(minutes=auction.extension_duration)
+        best_bid = None
+        
+        for b in bids:
+            bid_data = {"bid_amount": b.bid_amount}
+            if should_extend(auction, bid_data, best_bid):
+                current_close = b.bid_time + timedelta(minutes=auction.extension_duration)
+                
+            if best_bid is None or b.bid_amount < best_bid["bid_amount"]:
+                best_bid = bid_data
 
-        base_time = latest_bid.bid_time if latest_bid else auction.start_time
-        dynamic_close = base_time + timedelta(minutes=auction.extension_duration)
-        effective_close = min(dynamic_close, auction.forced_close_time)
+        effective_close = min(current_close, auction.forced_close_time)
 
         remaining = int((effective_close - now).total_seconds())
 
