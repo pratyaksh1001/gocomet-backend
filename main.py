@@ -14,7 +14,7 @@ from home import home_router
 from auction_exec import auction_exec_router
 
 app = FastAPI()
-frontend_urls = os.getenv("FRONTEND_URL", "")
+frontend_urls = os.getenv("frontendurl", "")
 env_origins = [u.strip() for u in frontend_urls.split(",") if u.strip()]
 default_origins = [
     "http://127.0.0.1:3000",
