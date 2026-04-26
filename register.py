@@ -5,7 +5,6 @@ from django.utils.crypto import salted_hmac
 from fastapi import APIRouter,Request
 import re
 
-
 from models import User
 from cache import cache
 import bcrypt

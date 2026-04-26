@@ -3,20 +3,18 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship
 from database import engine
 
 
-# ✅ Base
 class Base(DeclarativeBase):
     pass
 
 
-# 👤 USER
 class User(Base):
     __tablename__ = "user"
 
     email = mapped_column(String, primary_key=True, index=True)
     username = mapped_column(String, nullable=False)
     password = mapped_column(String, nullable=False)
+    role=mapped_column(String, nullable=False)
 
-    # 🔗 Relationships
     auctions = relationship(
         "Auction",
         back_populates="owner",
@@ -30,7 +28,6 @@ class User(Base):
     )
 
 
-# 📦 AUCTION
 class Auction(Base):
     __tablename__ = "auction"
     rfq_id = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -55,7 +52,6 @@ class Auction(Base):
     )
 
 
-# 💰 BIDS
 class Bids(Base):
     __tablename__ = "bids"
 

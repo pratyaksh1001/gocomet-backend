@@ -10,7 +10,7 @@ async def auth(request: Request):
     try:
         cached=cache.hgetall(token)
         if cached is not None:
-            return {"username":cached["username"],"email":cached["email"],"success": True}
+            return {"username":cached["username"],"email":cached["email"],"success": True,"role":cached["role"]}
         else:
             return {"username":"","email":"","success": False}
     except:

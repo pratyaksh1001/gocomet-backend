@@ -10,6 +10,7 @@ from login import login_router
 from auth import auth_router
 from auction_creation import auction_creator_router
 from home import home_router
+from auction_exec import auction_exec_router
 
 app = FastAPI()
 app.add_middleware(
@@ -25,3 +26,4 @@ app.include_router(login_router, prefix="/login", tags=["login"])
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(auction_creator_router, prefix="/auction", tags=["auction"])
 app.include_router(home_router, prefix="/home", tags=["home"])
+app.include_router(auction_exec_router, prefix="/auction", tags=["auction"])
