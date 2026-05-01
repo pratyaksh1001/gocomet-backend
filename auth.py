@@ -1,17 +1,25 @@
-from fastapi import APIRouter,Request
+from fastapi import APIRouter, Request
 from cache import cache
 import jwt
+
 auth_router = APIRouter()
+
 
 @auth_router.post("/")
 async def auth(request: Request):
-    data=await request.json()
-    token=data["token"]
+    data = await request.json()
+    token = data["token"]
     try:
-        cached=cache.hgetall(token)
+        cached = cache.hgetall(token)
         if cached is not None:
-            return {"username":cached["username"],"email":cached["email"],"success": True,"role":cached["role"]}
+            return {
+                "username": cached["username"],
+                "email": cached["email"],
+                "success": True,
+                "role": cached["role"],
+            }
         else:
-            return {"username":"","email":"","success": False}
+            return {"username": "", "email": "", "success": False}
     except:
-        return {"username":"","email":"","success": False}
+        print("hello world")
+        return {"username": "", "email": "", "success": False}
